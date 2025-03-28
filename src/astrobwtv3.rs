@@ -93,6 +93,30 @@ pub fn astrobwtv3_hash(input: &[u8]) -> [u8; 32] {
     let mut scratch_data = [0u8; (MAX_LENGTH + 64) as usize];
     let mut prev_lhash = lhash;
     let mut tries: u64 = 0;
+
+    #[inline]
+    fn apply_op(tmp: u8, op: u32, data: &[u8], pos2: u8) -> u8 {
+        match op {
+            0x00 => tmp.wrapping_add(tmp),              // +
+            0x01 => tmp.wrapping_sub(tmp ^ 97),         // XOR and -
+            0x02 => tmp.wrapping_mul(tmp),              // *
+            0x03 => tmp ^ data[pos2 as usize],          // XOR
+            0x04 => !tmp,                               // binary NOT operator
+            0x05 => tmp & data[pos2 as usize],          // AND
+            0x06 => tmp.wrapping_shl((tmp & 3) as u32), // shift left
+            0x07 => tmp.wrapping_shr((tmp & 3) as u32), // shift right
+            0x08 => tmp.reverse_bits(),                 // reverse bits
+            0x09 => tmp ^ tmp.count_ones() as u8,       // ones count bits
+            0x0A => tmp.rotate_left(tmp as u32),        // rotate bits by random
+            0x0B => tmp.rotate_left(1),                 // rotate bits by 1
+            0x0C => tmp ^ tmp.rotate_left(2),           // rotate bits by 2
+            0x0D => tmp.rotate_left(3),                 // rotate bits by 3
+            0x0E => tmp ^ tmp.rotate_left(4),           // rotate bits by 4
+            0x0F => tmp.rotate_left(5),                 // rotate bits by 5
+            _ => unreachable!(),
+        }
+    }
+
     loop {
         tries += 1;
         let random_switcher = prev_lhash ^ lhash ^ tries;
@@ -120,62 +144,18 @@ pub fn astrobwtv3_hash(input: &[u8]) -> [u8; 32] {
         }
         for i in pos1..pos2 {
             let mut tmp = data[i as usize];
-            for j in (0..=3).rev() {
-                let op = (opcode >> (j * 8)) & 0xFF;
-                match op {
-                    0x00 => {
-                        tmp = tmp.wrapping_add(tmp); // +
-                    }
-                    0x01 => {
-                        tmp = tmp.wrapping_sub(tmp ^ 97); // XOR and -
-                    }
-                    0x02 => {
-                        tmp = tmp.wrapping_mul(tmp); // *
-                    }
-                    0x03 => {
-                        tmp ^= data[pos2 as usize]; // XOR
-                    }
-                    0x04 => {
-                        tmp = !tmp; // binary NOT operator
-                    }
-                    0x05 => {
-                        tmp &= data[pos2 as usize]; // AND
-                    }
-                    0x06 => {
-                        tmp = tmp.wrapping_shl((tmp & 3) as u32); // shift left
-                    }
-                    0x07 => {
-                        tmp = tmp.wrapping_shr((tmp & 3) as u32); // shift right
-                    }
-                    0x08 => {
-                        tmp = tmp.reverse_bits(); // reverse bits
-                    }
-                    0x09 => {
-                        tmp = tmp ^ tmp.count_ones() as u8; // ones count bits
-                    }
-                    0x0A => {
-                        tmp = tmp.rotate_left(tmp as u32); // rotate bits by random
-                    }
-                    0x0B => {
-                        tmp = tmp.rotate_left(1); // rotate bits by 1
-                    }
-                    0x0C => {
-                        tmp = tmp ^ tmp.rotate_left(2); // rotate bits by 2
-                    }
-                    0x0D => {
-                        tmp = tmp.rotate_left(3); // rotate bits by 3
-                    }
-                    0x0E => {
-                        tmp = tmp ^ tmp.rotate_left(4); // rotate bits by 4
-                    }
-                    0x0F => {
-                        tmp = tmp.rotate_left(5); // rotate bits by 5
-                    }
-                    _ => {
-                        unreachable!();
-                    }
-                }
-            }
+
+            // Decode from opcode bytes.
+            let op3 = (opcode >> 24) & 0xFF;
+            let op2 = (opcode >> 16) & 0xFF;
+            let op1 = (opcode >> 8) & 0xFF;
+            let op0 = opcode & 0xFF;
+
+            tmp = apply_op(tmp, op3, &data, pos2);
+            tmp = apply_op(tmp, op2, &data, pos2);
+            tmp = apply_op(tmp, op1, &data, pos2);
+            tmp = apply_op(tmp, op0, &data, pos2);
+
             data[i as usize] = tmp;
             if branch == 0 && (pos2 - pos1) % 2 == 1 {
                 // Reverse.
