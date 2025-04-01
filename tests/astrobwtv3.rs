@@ -93,9 +93,11 @@ const OUTPUT_HASHES: [[u8; 32]; 10] = [
 #[test]
 fn astrobwtv3_hash_10() {
     for index in 0..INPUT_HASHES.len() {
+        let result = astrobwtv3::astrobwtv3_hash(&INPUT_HASHES[index]);
         assert_eq!(
-            OUTPUT_HASHES[index],
-            astrobwtv3::astrobwtv3_hash(&INPUT_HASHES[index])
+            OUTPUT_HASHES[index], result,
+            "Failed on test case {}: expected {:?}, got {:?}",
+            index, OUTPUT_HASHES[index], result
         );
     }
 }
