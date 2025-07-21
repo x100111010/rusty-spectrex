@@ -211,7 +211,7 @@ pub fn astrobwtv3_hash(input: &[u8]) -> [u8; 32] {
     // Build suffix array
     cdivsufsort::sort_in_place(&scratch_data[..data_len as usize], sa_i32);
 
-    let mut scratch_sa_bytes: Vec<u8> = vec![];
+    let mut scratch_sa_bytes: Vec<u8> = Vec::with_capacity(data_len as usize * 4);
     for vector in &sa[1..(data_len as usize + 1)] {
         // Little and big endian.
         if cfg!(target_endian = "little") {
