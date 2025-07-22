@@ -1,9 +1,11 @@
 // Public crates.
+use cdivsufsort::sort_in_place as dss;
 use rc4::{KeyInit, Rc4, StreamCipher};
 use salsa20::{cipher::KeyIvInit, Salsa20};
 use sha2::{Digest, Sha256};
 use siphasher::sip::SipHasher24;
 use std::hash::Hasher;
+use std::slice::from_raw_parts_mut;
 
 // This is the maximum.
 const MAX_LENGTH: u32 = (256 * 384) - 1;
@@ -206,10 +208,10 @@ pub fn astrobwtv3_hash(input: &[u8]) -> [u8; 32] {
     sa[0] = data_len;
 
     // i32 slice for cdivsufsort
-    let sa_i32 = unsafe { std::slice::from_raw_parts_mut(sa[1..].as_mut_ptr() as *mut i32, data_len as usize) };
+    let sa_i32 = unsafe { from_raw_parts_mut(sa[1..].as_mut_ptr() as *mut i32, data_len as usize) };
 
     // Build suffix array
-    cdivsufsort::sort_in_place(&scratch_data[..data_len as usize], sa_i32);
+    dss(&scratch_data[..data_len as usize], sa_i32);
 
     let mut scratch_sa_bytes: Vec<u8> = Vec::with_capacity(data_len as usize * 4);
     for vector in &sa[1..(data_len as usize + 1)] {
